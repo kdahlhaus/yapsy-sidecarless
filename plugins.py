@@ -25,6 +25,10 @@ module-level variables (all strings):
   __plugin_copyright__   = Copyright/licence information.
 """
 
+import logging
+
+log = logging.getLogger("yapsy-sidecarless")
+
 import yapsy.PluginManager as _managers
 import yapsy.PluginFileLocator as _locators
 
@@ -33,6 +37,8 @@ __copyright__ = "Matthew Celnik"
 __licence__ = "LGPL"
 __maintainer__ = "Matthew Celnik"
 __email__ = "matthew@celnik.co.uk"
+
+
 
 
 class Analyzer(_locators.IPluginFileAnalyzer):
@@ -55,6 +61,7 @@ class Analyzer(_locators.IPluginFileAnalyzer):
             If the file is a valid Python module then returns the module,
             otherwise returns None.
         """
+        log.debug(f"filepath:{filepath}")
         import importlib.machinery
         import importlib.util
         import os
@@ -94,8 +101,11 @@ class Analyzer(_locators.IPluginFileAnalyzer):
         themodule = self._loadModule(filename)
         if themodule is not None:
             name = getattr(themodule, '__plugin_name__', None)
-            return name is not None
+            rv = name is not None
+            log.debug(f"isValidPlugin({filename})={rv}")
+            return rv
         else:
+            log.debug(f"isValidPlugin({filename})=false")
             return False
 
     def getInfosDictFromPlugin(self, dirpath, filename):
@@ -142,6 +152,7 @@ class Locator(_locators.PluginFileLocator):
     """
 
     def __init__(self, analyzers=None):
+        log.debug("Locator is the single-file locator")
         # By default use the local analyzer and the plugin file analyzer.
         if analyzers is None:
             analyzers = [
@@ -167,7 +178,9 @@ class Locator(_locators.PluginFileLocator):
         _discovered = {}
 
         for directory in map(os.path.abspath, self.plugins_places):
+            log.debug(f"dir={directory}")
             if not os.path.isdir(directory):
+                log.debug("is not a directory")
                 continue
             if self.recursive:
                 debug_txt_mode = "recursively"
@@ -180,6 +193,7 @@ class Locator(_locators.PluginFileLocator):
             for root, fldrs, files in walk_iter:
                 for filename in files:
                     sidecar_path = os.path.join(root, filename)
+                    log.debug(f"sidecar_path={sidecar_path}")
 
                     for analyzer in self._analyzers:
                         # Eliminate the obvious non-plugin files.
